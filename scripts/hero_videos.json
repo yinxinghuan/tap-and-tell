@@ -1,0 +1,33 @@
+[
+  {
+    "id": "cabin",
+    "error": "video failed: {'task_id': 'd3622958-d031-4f6c-8542-7613ef18b548', 'status': 'failed', 'created_at': '20260527-153943', 'finish_at': '20260527-154536', 'log': 'process error, generate failed!'}",
+    "a_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779827243649029.webp",
+    "b_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779859812186600.webp"
+  },
+  {
+    "id": "beach",
+    "error": "video failed: {'task_id': 'de3fb0d6-8b60-4ccc-b2ac-106fce307a69', 'status': 'failed', 'created_at': '20260527-155158', 'finish_at': '20260527-155635', 'log': 'process error, generate failed!'}",
+    "a_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779864848152428.webp",
+    "b_url": null
+  },
+  {
+    "id": "alley",
+    "caption": "a quiet alley meets the rain",
+    "a_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779865007698654.webp",
+    "b_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779868789864146.webp",
+    "video_url": "https://cdn.aiwaves.tech/prodsv/telegram/video/123456/20260527-160253.mp4"
+  },
+  {
+    "id": "greenhouse",
+    "error": "video failed: {'task_id': '275ff8bf-e01b-4172-b081-63f30ea9111d', 'status': 'failed', 'created_at': '20260527-161749', 'finish_at': '20260527-161946', 'log': 'process error, generate failed!'}",
+    "a_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779865167403308.webp",
+    "b_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779865255984122.webp"
+  },
+  {
+    "id": "desert",
+    "error": "video failed: {'task_id': 'edb6d137-6f20-4146-b9a0-6be3377a4cd9', 'status': 'failed', 'created_at': '20260527-162249', 'finish_at': '20260527-162629', 'log': 'process error, generate failed!'}",
+    "a_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779865530315397.webp",
+    "b_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779865617887591.webp"
+  }
+]

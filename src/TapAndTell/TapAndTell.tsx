@@ -1,0 +1,517 @@
+// Tap & Tell — main orchestrator + all phases. AlterU-branded v0.2.
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGenImage, callAigramAPI, telegramId, isInAigram } from '@shared/runtime';
+import { generateVideo, type ProgressInfo } from './utils/videoApi';
+import { planBeat, pickTeaser, type BeatPlan } from './utils/aiHelpers';
+import { ARCHETYPES } from './utils/prompts';
+import { loadHeroEntries, getSeed, type HeroEntry } from './utils/heroData';
+import AlteruEmblem from './components/AlteruEmblem';
+import { t } from './i18n';
+import './TapAndTell.less';
+
+type Phase = 'home' | 'gen-a' | 'tap' | 'gen-b' | 'gen-video' | 'play' | 'error';
+
+interface TapSpot { x: number; y: number; }
+interface Avatar { url: string; name: string; isDemo: boolean; }
+
+const DEMO_AVATAR: Avatar = {
+  url: `${import.meta.env.BASE_URL}demo-avatar.svg`,
+  name: 'guest',
+  isDemo: true,
+};
+
+export default function TapAndTell() {
+  const genImg = useGenImage();
+  const [phase, setPhase] = useState<Phase>('home');
+  const [errMsg, setErrMsg] = useState('');
+
+  // Identity ─────────────────────────────────────────────────────────────────
+  const [avatar, setAvatar] = useState<Avatar>(DEMO_AVATAR);
+  useEffect(() => {
+    if (!isInAigram || !telegramId) return;
+    callAigramAPI<{ data?: { name?: string; head_url?: string } }>(
+      `/note/telegram/user/get/info/by/telegram_id?telegram_id=${encodeURIComponent(telegramId)}`,
+      'GET',
+    )
+      .then(res => {
+        const head = res?.data?.head_url;
+        const name = res?.data?.name;
+        if (head) {
+          setAvatar({ url: head, name: name || 'you', isDemo: false });
+        }
+      })
+      .catch(() => {
+        /* keep demo */
+      });
+  }, []);
+
+  // Hero entries ────────────────────────────────────────────────────────────
+  const [heroEntries, setHeroEntries] = useState<HeroEntry[]>(getSeed());
+  useEffect(() => {
+    loadHeroEntries().then(setHeroEntries);
+  }, []);
+
+  // Story state ─────────────────────────────────────────────────────────────
+  const [frameAPrompt, setFrameAPrompt] = useState('');
+  const [frameAUrl, setFrameAUrl] = useState('');
+  const [tap, setTap] = useState<TapSpot | null>(null);
+  const [beatPlan, setBeatPlan] = useState<BeatPlan | null>(null);
+  const [frameBUrl, setFrameBUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoProgress, setVideoProgress] = useState<ProgressInfo>({
+    seconds: 0, attempt: 1, maxAttempts: 3, retrying: false,
+  });
+
+  // Loading captions cycle
+  const [teaser, setTeaser] = useState(pickTeaser());
+  useEffect(() => {
+    if (phase === 'gen-a' || phase === 'gen-b' || phase === 'gen-video') {
+      const t = setInterval(() => setTeaser(pickTeaser()), 4500);
+      return () => clearInterval(t);
+    }
+  }, [phase]);
+
+  // ─── Phase actions ────────────────────────────────────────────────────────
+
+  // "Make yours" — pick a random archetype, use avatar as ref
+  const makeYours = useCallback(async () => {
+    const arch = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
+    setFrameAPrompt(arch.prompt);
+    setPhase('gen-a');
+    try {
+      const url = await genImg.generate({ prompt: arch.prompt });
+      setFrameAUrl(url);
+      setPhase('tap');
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      setErrMsg(`Couldn't compose the opening scene — ${m}`);
+      setPhase('error');
+    }
+  }, [genImg]);
+
+  // "Remix" — start from a hero entry's Frame A
+  const remixHero = useCallback((entry: HeroEntry) => {
+    if (!entry.a_url) {
+      void makeYours();
+      return;
+    }
+    setFrameAUrl(entry.a_url);
+    setFrameAPrompt(`the scene of ${entry.caption}`);
+    setPhase('tap');
+  }, [makeYours]);
+
+  const startWithUpload = useCallback(async (file: File) => {
+    setPhase('gen-a');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('https://video-gen-upload.xinghuan-yin.workers.dev', {
+        method: 'POST', body: form,
+      });
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (!json.url) throw new Error(json.error || 'upload failed');
+      setFrameAPrompt('the uploaded photograph');
+      setFrameAUrl(json.url);
+      setPhase('tap');
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      setErrMsg(`Couldn't upload the photo — ${m}`);
+      setPhase('error');
+    }
+  }, []);
+
+  const handleCanvasTap = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTap({
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height,
+    });
+  }, []);
+
+  const [planLoading, setPlanLoading] = useState(false);
+  useEffect(() => {
+    if (phase !== 'tap' || !tap) return;
+    let cancelled = false;
+    setPlanLoading(true);
+    planBeat(frameAPrompt, tap, '')
+      .then(p => { if (!cancelled) setBeatPlan(p); })
+      .catch(() => {
+        if (!cancelled) {
+          setBeatPlan({
+            chips: ['light shifts', 'wind rises', 'shadow falls'],
+            next_image_prompt: frameAPrompt + ', mood shifts, weather thickens',
+            video_prompt: 'slow cinematic atmosphere shift',
+          });
+        }
+      })
+      .finally(() => !cancelled && setPlanLoading(false));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tap?.x, tap?.y, phase]);
+
+  const handleGo = useCallback(async (cluefromArg?: string) => {
+    const finalClue = (cluefromArg ?? '').trim();
+    if (!tap && !finalClue) return;
+    setPhase('gen-b');
+    try {
+      const finalPlan = await planBeat(frameAPrompt, tap, finalClue);
+      setBeatPlan(finalPlan);
+
+      const bUrl = await genImg.generate({
+        prompt: finalPlan.next_image_prompt,
+        ref_url: frameAUrl,
+      });
+      setFrameBUrl(bUrl);
+
+      setPhase('gen-video');
+      setVideoProgress({ seconds: 0, attempt: 1, maxAttempts: 3, retrying: false });
+      const vUrl = await generateVideo(
+        {
+          image_url: frameAUrl,
+          end_image_url: bUrl,
+          prompt: finalPlan.video_prompt,
+          env: 'prod',
+        },
+        (info: ProgressInfo) => setVideoProgress(info),
+      );
+      setVideoUrl(vUrl);
+      setPhase('play');
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      setErrMsg(`Generation failed — ${m}`);
+      setPhase('error');
+    }
+  }, [tap, frameAPrompt, frameAUrl, genImg]);
+
+  const reset = useCallback(() => {
+    setPhase('home');
+    setFrameAPrompt('');
+    setFrameAUrl('');
+    setTap(null);
+    setBeatPlan(null);
+    setFrameBUrl('');
+    setVideoUrl('');
+    setVideoProgress({ seconds: 0, attempt: 1, maxAttempts: 3, retrying: false });
+    setErrMsg('');
+  }, []);
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  return (
+    <div className="tt">
+      <div className="tt__header">
+        <div className="tt__brand-bar">
+          <AlteruEmblem size={18} uColor="#F5B1C7" starColor="#FFFFFF" />
+          <span className="tt__game-name">TAP &amp; TELL</span>
+        </div>
+        <div className="tt__phase-tag">{phaseLabel(phase)}</div>
+      </div>
+
+      {phase === 'home' && (
+        <HomeScreen
+          avatar={avatar}
+          heroEntries={heroEntries}
+          onMakeYours={makeYours}
+          onUpload={startWithUpload}
+          onRemix={remixHero}
+        />
+      )}
+
+      {phase === 'gen-a' && (
+        <LoaderScreen caption={teaser} meta={t('loader.meta.gen-a')} />
+      )}
+
+      {phase === 'tap' && (
+        <TapScreen
+          imageUrl={frameAUrl}
+          tap={tap}
+          plan={beatPlan}
+          planLoading={planLoading}
+          onCanvasTap={handleCanvasTap}
+          onGo={handleGo}
+        />
+      )}
+
+      {phase === 'gen-b' && (
+        <LoaderScreen
+          caption={teaser}
+          meta={t('loader.meta.gen-b')}
+          anchors={[frameAUrl]}
+        />
+      )}
+
+      {phase === 'gen-video' && (
+        <LoaderScreen
+          caption={videoProgress.retrying ? 'the cloud blinked. trying again…' : teaser}
+          meta={
+            videoProgress.retrying
+              ? t('loader.meta.retry', {
+                  seconds: 30 - videoProgress.seconds,
+                  attempt: videoProgress.attempt,
+                  max: videoProgress.maxAttempts,
+                })
+              : videoProgress.attempt > 1
+                ? t('loader.meta.gen-video.attempt', { seconds: videoProgress.seconds, attempt: videoProgress.attempt })
+                : t('loader.meta.gen-video', { seconds: videoProgress.seconds })
+          }
+          anchors={[frameAUrl, frameBUrl]}
+        />
+      )}
+
+      {phase === 'play' && (
+        <PlayScreen videoUrl={videoUrl} onAgain={reset} />
+      )}
+
+      {phase === 'error' && (
+        <div className="tt-error">
+          <div className="tt-error__motif">
+            <AlteruEmblem uColor="#FFFFFF" starColor="#FFFFFF" size={220} />
+          </div>
+          <div className="tt-error__title">A pause<br/>in the story.</div>
+          <div className="tt-error__msg">{errMsg}</div>
+          <button className="tt-btn tt-btn--primary" onPointerDown={reset}>{t('error.cta.startOver')}</button>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ─── Sub-components ────────────────────────────────────────────────────────
+
+export function phaseLabel(p: Phase): string {
+  return t(`phase.${p}`);
+}
+
+const ArrowIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14M13 6l6 6-6 6"/>
+  </svg>
+);
+
+export function HomeScreen({
+  avatar,
+  heroEntries,
+  onMakeYours,
+  onUpload,
+  onRemix,
+}: {
+  avatar: Avatar;
+  heroEntries: HeroEntry[];
+  onMakeYours: () => void;
+  onUpload: (f: File) => void;
+  onRemix: (e: HeroEntry) => void;
+}) {
+  const [heroIdx, setHeroIdx] = useState(0);
+  useEffect(() => {
+    if (heroEntries.length <= 1) return;
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroEntries.length), 7000);
+    return () => clearInterval(t);
+  }, [heroEntries.length]);
+
+  const hero = heroEntries[heroIdx] ?? heroEntries[0];
+  const wallEntries = heroEntries.filter(e => e.id !== hero?.id).slice(0, 4);
+
+  return (
+    <div className="tt-home">
+      <div className="tt-hero" onPointerDown={() => hero && onRemix(hero)}>
+        {hero && (
+          <video
+            src={hero.video_url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            key={hero.id}
+          />
+        )}
+        <div className="tt-hero__overlay" />
+        <div className="tt-hero__avatar">
+          <img src={avatar.url} alt="" />
+        </div>
+        {hero && (
+          <div className="tt-hero__chip">
+            <em>{hero.caption}</em>
+            <span>{t('home.hero.remix')}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="tt-pitch">
+        <h1 className="tt-pitch__headline">Tell what happens next.</h1>
+        <p className="tt-pitch__sub">{t('home.pitch.sub')}</p>
+      </div>
+
+      <div className="tt-cta">
+        <button className="tt-cta__primary" onPointerDown={onMakeYours}>
+          Make yours <ArrowIcon />
+        </button>
+        <div className="tt-cta__avatar-pill">
+          <img src={avatar.url} alt="" />
+          <span>{avatar.isDemo ? t('home.cta.avatarPill.demo') : t('home.cta.avatarPill.playing')}</span>
+          <em>{avatar.name}</em>
+        </div>
+        <div className="tt-cta__upload">
+          <label>
+            {t('home.cta.upload')}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => {
+                const f = e.target.files?.[0];
+                if (f) onUpload(f);
+              }}
+            />
+          </label>
+        </div>
+      </div>
+
+      {wallEntries.length > 0 && (
+        <div className="tt-wall">
+          <div className="tt-wall__label">{t('home.wall.label')}</div>
+          <div className="tt-wall__row">
+            {wallEntries.map(e => (
+              <div
+                key={e.id}
+                className="tt-wall__cell"
+                onPointerDown={() => onRemix(e)}
+              >
+                <video src={e.video_url} loop muted playsInline autoPlay />
+                <div className="tt-wall__cell__cap">{e.caption}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LoaderScreen({
+  caption,
+  meta,
+  anchors,
+}: {
+  caption: string;
+  meta: string;
+  anchors?: string[];
+}) {
+  return (
+    <div className="tt-loader">
+      <div className="tt-loader__motif">
+        <AlteruEmblem uColor="#FFFFFF" starColor="#FFFFFF" size={300} />
+      </div>
+      {anchors && anchors.length > 0 && (
+        <div className="tt-loader__anchors">
+          {anchors.flatMap((u, i) => {
+            const elems = [<img key={`a-${i}`} src={u} alt="" />];
+            if (i < anchors.length - 1) elems.push(<span key={`s-${i}`}>→</span>);
+            return elems;
+          })}
+        </div>
+      )}
+      <img className="tt-loader__svg" src={`${import.meta.env.BASE_URL}loader.svg`} alt="loading" />
+      <div className="tt-loader__caption">{caption}</div>
+      <div className="tt-loader__meta">{meta}</div>
+    </div>
+  );
+}
+
+export function TapScreen({
+  imageUrl,
+  tap,
+  plan,
+  planLoading,
+  onCanvasTap,
+  onGo,
+}: {
+  imageUrl: string;
+  tap: TapSpot | null;
+  plan: BeatPlan | null;
+  planLoading: boolean;
+  onCanvasTap: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onGo: (clue: string) => void;
+}) {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [customClue, setCustomClue] = useState('');
+  const chips = plan?.chips ?? [];
+
+  return (
+    <div className="tt-tap">
+      <div className="tt-canvas" ref={canvasRef} onPointerDown={onCanvasTap}>
+        <img src={imageUrl} alt="" />
+        {tap && (
+          <div
+            className="tt-ripple"
+            style={{ left: `${tap.x * 100}%`, top: `${tap.y * 100}%` }}
+          >
+            <i />
+          </div>
+        )}
+        {!tap && <div className="tt-tap__hint">{t('tap.hint')}</div>}
+      </div>
+
+      {tap && (
+        <div className="tt-prompt">
+          <div className="tt-prompt__question">what happens here?</div>
+
+          {planLoading || chips.length === 0
+            ? [0, 1, 2].map(i => (
+                <div key={i} className="tt-chip-card tt-chip-card--loading">
+                  listening to the frame…
+                </div>
+              ))
+            : chips.map(c => (
+                <button
+                  key={c}
+                  className="tt-chip-card"
+                  onPointerDown={() => onGo(c)}
+                >
+                  <span>{c}</span>
+                  <span className="tt-chip-card__arrow">→</span>
+                </button>
+              ))}
+
+          <div className="tt-or">{t('tap.or')}</div>
+
+          <div className="tt-custom-row">
+            <input
+              className="tt-input"
+              value={customClue}
+              onChange={e => setCustomClue(e.target.value.slice(0, 60))}
+              placeholder={t('tap.input.placeholder')}
+              maxLength={60}
+            />
+            <button
+              className="tt-go"
+              onPointerDown={() => onGo(customClue)}
+              disabled={!customClue.trim()}
+            >
+              GO
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PlayScreen({ videoUrl, onAgain }: { videoUrl: string; onAgain: () => void }) {
+  return (
+    <div className="tt-play">
+      <div className="tt-play__caption">your story.</div>
+      <div className="tt-play__video">
+        <video src={videoUrl} controls autoPlay loop playsInline />
+      </div>
+      <div className="tt-play__cta">
+        <a className="tt-btn" href={videoUrl} target="_blank" rel="noopener noreferrer" download>
+          {t('play.cta.download')}
+        </a>
+        <button className="tt-btn tt-btn--primary" onPointerDown={onAgain}>
+          tell another
+        </button>
+      </div>
+    </div>
+  );
+}

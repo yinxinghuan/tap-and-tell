@@ -1,0 +1,16 @@
+[
+  {
+    "id": "cabin",
+    "caption": "a cabin warms in winter",
+    "a_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779827243649029.webp",
+    "b_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779859812186600.webp",
+    "video_url": "https://cdn.aiwaves.tech/prodsv/telegram/video/123456/20260527-133040.mp4"
+  },
+  {
+    "id": "alley",
+    "caption": "a quiet alley meets the rain",
+    "a_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779865007698654.webp",
+    "b_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/618336286/1779868789864146.webp",
+    "video_url": "https://cdn.aiwaves.tech/prodsv/telegram/video/123456/20260527-160253.mp4"
+  }
+]
