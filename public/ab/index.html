@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tap & Tell — Avatar → Scene A/B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&display=swap">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141a;
+    --surface-2: #1f1f26;
+    --ink: #f0eedb;
+    --ink-dim: rgba(240, 238, 219, 0.6);
+    --ink-faint: rgba(240, 238, 219, 0.3);
+    --pink: #F5B1C7;
+    --pink-bg: rgba(245, 177, 199, 0.12);
+    --good: #6FE39A;
+    --warn: #E7B859;
+    --bad: #E26D6D;
+    --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 36px 24px 80px; }
+  .title-bar { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: clamp(28px, 4vw, 42px);
+    margin: 0;
+    color: var(--ink);
+  }
+  .meta { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
+  .lede {
+    font-size: 15px;
+    color: var(--ink-dim);
+    max-width: 760px;
+    margin: 12px 0 32px;
+  }
+  .lede b { color: var(--ink); }
+
+  h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 28px;
+    margin: 56px 0 8px;
+    color: var(--pink);
+  }
+  h2 .sub { font-family: 'Inter', sans-serif; font-style: normal; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin-left: 12px; }
+  h3 { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; margin: 24px 0 12px; color: var(--ink); }
+
+  .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 8px; }
+  @media (max-width: 900px) { .row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 540px) { .row { grid-template-columns: 1fr; } }
+  .cell { display: flex; flex-direction: column; gap: 6px; }
+  .cell img {
+    width: 100%; aspect-ratio: 1/1; object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #000;
+    transition: transform 0.18s;
+    cursor: zoom-in;
+  }
+  .cell img:hover { transform: scale(1.02); border-color: var(--pink); }
+  .lbl { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); }
+  .lbl b { color: var(--ink); font-weight: 600; }
+  .pill {
+    display: inline-block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .pill--A { background: var(--pink-bg); color: var(--pink); }
+  .pill--B { background: rgba(111, 227, 154, 0.12); color: var(--good); }
+  .pill--ref { background: rgba(255,255,255,0.06); color: var(--ink-faint); }
+
+  details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  details summary {
+    cursor: pointer;
+    color: var(--ink-dim);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  details pre {
+    margin: 12px 0 4px;
+    background: var(--bg);
+    padding: 10px 12px;
+    border-radius: 6px;
+    color: var(--ink-dim);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    font-family: 'Inter', monospace;
+  }
+  .pre-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-top: 8px; }
+
+  .observation {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--pink);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .observation h3 { margin-top: 0; color: var(--pink); }
+  .observation ul { padding-left: 18px; margin: 6px 0; }
+  .observation li { margin: 6px 0; font-size: 14px; color: var(--ink-dim); }
+  .observation li b { color: var(--ink); }
+
+  .verdict {
+    background: linear-gradient(180deg, rgba(245,177,199,0.08), rgba(245,177,199,0.02));
+    border: 1px solid var(--pink);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 48px 0 28px;
+  }
+  .verdict h2 { margin: 0 0 12px; color: var(--pink); }
+  .verdict p { font-size: 16px; color: var(--ink); margin: 8px 0; }
+  .verdict p b { color: var(--pink); }
+  .verdict ol { padding-left: 24px; }
+  .verdict ol li { margin: 10px 0; font-size: 14px; color: var(--ink-dim); }
+  .verdict ol li b { color: var(--ink); }
+
+  .lightbox {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.94);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    cursor: zoom-out;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+
+  footer { color: var(--ink-faint); font-size: 11px; letter-spacing: 0.1em; margin-top: 64px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="title-bar">
+  <h1>Avatar → Scene A/B</h1>
+  <div class="meta">Tap &amp; Tell · 2026-05-28</div>
+</div>
+
+<p class="lede">
+两种"把用户放进场景里"的 pipeline 对照测试。
+<b>A 路 = img2img</b>（把头像当 ref + 通用 scene prompt，当前 v0.7.4 的实现）。
+<b>B 路 = txt2img</b>（不传 ref，把头像的特征手写进 prompt 后生图）。
+两轮测试：Round 1 用 photoreal 头像，Round 2 用 stylized 头像（更接近真实 Aigram 用户那种 AI 艺术风格的头像）。
+</p>
+
+<!-- =========================================================================
+     ROUND 1
+========================================================================== -->
+<h2>Round 1 <span class="sub">photoreal portrait avatar</span></h2>
+
+<div class="row" style="grid-template-columns: 1fr 3fr;">
+  <div class="cell">
+    <img src="avatar.webp" alt="round 1 avatar" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--ref">REF</span><b>Round 1 头像</b></div>
+  </div>
+  <div class="observation" style="margin: 0;">
+    <h3>头像设定</h3>
+    <ul>
+      <li><b>类型：</b>photoreal portrait（影楼级棚拍证件照风）</li>
+      <li><b>特征描述（B 路喂给 prompt）：</b><i>"a young woman in her late twenties with auburn shoulder-length wavy hair, fair skin with light freckles, wearing a moss-green knit sweater"</i></li>
+      <li><b>更像哪类 Aigram 用户：</b>少数。大多数 Aigram 用户头像是 AI 艺术风格，不是这种棚拍照</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Cabin · 雪屋</h3>
+<div class="row">
+  <div class="cell">
+    <img src="cabin_A_img2img.webp" alt="cabin A" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--A">A · img2img</span><b>当前实现</b></div>
+  </div>
+  <div class="cell">
+    <img src="cabin_B_txt2img.webp" alt="cabin B" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--B">B · txt2img</span><b>纯文字描述</b></div>
+  </div>
+  <div class="cell">
+    <img src="avatar.webp" alt="ref" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--ref">REF</span>对照用头像</div>
+  </div>
+  <div class="cell">
+    <div class="observation" style="margin: 0; padding: 14px 18px; height: 100%;">
+      <ul>
+        <li><b>A：</b>侧身电影感，毛衣颜色 + 头发颜色 + 五官身形<b>明显是同一个人</b>，雪粒和窗光自然</li>
+        <li><b>B：</b>气质对了但<b>是个不同的人</b>。description 太粗糙不够锁人</li>
+        <li>胜：<b>A</b> ✓</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<details><summary>展开看 prompt</summary>
+<div class="pre-label">A · img2img prompt（avatar as ref）</div>
+<pre>cinematic still of the figure standing outside a small wooden cabin alone in a snowy pine forest at dusk, warm light glowing from one window, soft snowfall, the figure half-silhouette against the window glow, muted color grade, atmospheric, photoreal, 1:1</pre>
+<div class="pre-label">B · txt2img prompt（avatar features baked in）</div>
+<pre>cinematic still of a young woman in her late twenties with auburn shoulder-length wavy hair, fair skin with light freckles, wearing a moss-green knit sweater, standing outside a small wooden cabin alone in a snowy pine forest at dusk, warm light glowing from one window behind her, soft snowfall on her hair and sweater, half-silhouette against the window glow, muted color grade, atmospheric, photoreal, 1:1</pre>
+</details>
+
+<h3>Alley · 雨夜小巷</h3>
+<div class="row">
+  <div class="cell">
+    <img src="alley_A_img2img.webp" alt="alley A" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--A">A · img2img</span><b>当前实现</b></div>
+  </div>
+  <div class="cell">
+    <img src="alley_B_txt2img.webp" alt="alley B" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--B">B · txt2img</span><b>纯文字描述</b></div>
+  </div>
+  <div class="cell">
+    <img src="avatar.webp" alt="ref" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--ref">REF</span>对照用头像</div>
+  </div>
+  <div class="cell">
+    <div class="observation" style="margin: 0; padding: 14px 18px; height: 100%;">
+      <ul>
+        <li><b>A：</b>全身入镜+笑容保留+霓虹粉打在面部，<b>像电影海报</b>，连黑长裤都补得自然</li>
+        <li><b>B：</b>构图也很美，但又是不同人，没有 A 的身份感</li>
+        <li>胜：<b>A</b> ✓</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     ROUND 2
+========================================================================== -->
+<h2>Round 2 <span class="sub">stylized AI avatar — 更接近真实 Aigram 用户</span></h2>
+
+<div class="row" style="grid-template-columns: 1fr 3fr;">
+  <div class="cell">
+    <img src="r2_avatar.webp" alt="round 2 avatar" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--ref">REF</span><b>Round 2 头像</b></div>
+  </div>
+  <div class="observation" style="margin: 0;">
+    <h3>头像设定</h3>
+    <ul>
+      <li><b>类型：</b>stylized anime portrait（动漫/cel-shaded 风格）</li>
+      <li><b>特征描述（B 路）：</b><i>"a young woman with vibrant teal short bob hair, soft cel-shaded skin, wearing an oversized denim jacket"</i></li>
+      <li><b>更像哪类 Aigram 用户：</b>大多数。Aigram 主流头像是 AI 艺术风格（动漫/油画/赛博），就是这一类</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Cabin · 雪屋</h3>
+<div class="row">
+  <div class="cell">
+    <img src="r2_cabin_A_img2img.webp" alt="r2 cabin A" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--A">A · img2img</span><b>当前实现</b></div>
+  </div>
+  <div class="cell">
+    <img src="r2_cabin_B_txt2img.webp" alt="r2 cabin B" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--B">B · txt2img</span><b>纯文字描述</b></div>
+  </div>
+  <div class="cell">
+    <img src="r2_avatar.webp" alt="ref" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--ref">REF</span>对照用头像</div>
+  </div>
+  <div class="cell">
+    <div class="observation" style="margin: 0; padding: 14px 18px; height: 100%;">
+      <ul>
+        <li><b>A：</b>动漫风格被<b>整张图带过去</b>了 —— 模型试图把 anime 头像融进 photoreal cabin，结果是个小小动漫人剪影<b>悬浮在</b>真实雪屋前。"<b>贴上去感</b>"出现了</li>
+        <li><b>B：</b>从纯文字出图，teal 头发 + 羊毛领牛仔外套<b>非常美</b>，整张完全 photoreal cinematic，但是<b>另一个人</b></li>
+        <li>胜：<b>B</b>（要美感）/ <b>都不行</b>（要保留身份）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3>Alley · 雨夜小巷</h3>
+<div class="row">
+  <div class="cell">
+    <img src="r2_alley_A_img2img.webp" alt="r2 alley A" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--A">A · img2img</span><b>当前实现</b></div>
+  </div>
+  <div class="cell">
+    <img src="r2_alley_B_txt2img.webp" alt="r2 alley B" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--B">B · txt2img</span><b>纯文字描述</b></div>
+  </div>
+  <div class="cell">
+    <img src="r2_avatar.webp" alt="ref" onclick="zoom(this)">
+    <div class="lbl"><span class="pill pill--ref">REF</span>对照用头像</div>
+  </div>
+  <div class="cell">
+    <div class="observation" style="margin: 0; padding: 14px 18px; height: 100%;">
+      <ul>
+        <li><b>A：</b>更极端 —— <b>整个 alley 场景被转成了动漫风</b>。看起来不像"她在那条街上"，像"一张动漫插画"。完全失去 cinematic 调子</li>
+        <li><b>B：</b>电影感留住了，teal 短发 + 牛仔外套准确，<b>极美的剧照</b>。但还是"长得像描述的另一个人"</li>
+        <li>胜：<b>B</b> ✓ 在 stylized 输入的情形下</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     VERDICT
+========================================================================== -->
+<div class="verdict">
+  <h2>结论</h2>
+  <p>
+    "贴上去感"的<b>真凶不是 pipeline，是头像和场景的 style 是否同源</b>。
+    img2img 工作得很好——当且仅当头像和目标场景同属一个视觉风格（两者都 photoreal，或两者都 stylized）。
+    跨风格时（anime 头像 → photoreal cinematic 场景）模型只能二选一，要么把头像变成场景的风格（A 路 round 2 cabin 那个小剪影），要么反过来把整张图变成头像的风格（A 路 round 2 alley）。两种都不是用户期待的"我在那个 cinematic 场景里"。
+  </p>
+  <p><b>给运行时的策略建议</b>（按工程量从小到大）：</p>
+  <ol>
+    <li><b>什么都不动</b>，告诉用户"如果你的头像是 AI 艺术风格，最终视频会偏 AI 艺术风格"——把 bug 当 feature 卖。<i>0 工时。</i></li>
+    <li><b>预处理头像：先转 photoreal</b>。txt2img 前先跑一次 <code>img2img(avatar, prompt="photoreal portrait of the person, studio lighting, photoreal")</code> 把头像"洗"成 photoreal 中间体，再用这个中间体当 ref 进入 scene 生图。多 1 次 img2img（~3 分钟）+ 1 次限速间隔。<i>用户 ID 一致性保留得最好。需要测一下"洗白"效果。</i></li>
+    <li><b>切到 B 路</b>。不再用头像当 ref，而是<b>先用 vision LLM 看头像→输出特征描述</b>，把描述塞进 prompt 走 txt2img。形象不严格保留但画面始终 cinematic。<i>需要确认我们的 chat 接口（chat.aiwaves.tech/aigram/api/game-chat）支不支持 image input。如不支持要找同事加。</i></li>
+    <li><b>双轨：让用户选</b>。开场 "你的头像是 photoreal 还是艺术风格？" 二选一。photoreal 走 A 路（精确身份），艺术风格走 B 路（精确风格）。<i>稍微多一步操作但用户自己 own 结果。</i></li>
+  </ol>
+  <p>
+    我个人倾向 <b>2 → 3 → 4 顺序探索</b>：先做 (2) 试试预处理能不能洗出可用的 photoreal 中间体（成本最小，不改 UI），如果不行再上 (3)。(1) 风险是 Aigram 用户的头像 90% 是艺术风格，那意味着 90% 用户拿到的是"艺术风格小视频"而不是"我在 cinematic 场景里"——卖不动。
+  </p>
+</div>
+
+<footer>
+  Tap &amp; Tell · genl_image API (wdabuliu) · 10 images @ ~80s each · view full size with click
+</footer>
+
+</div>
+
+<div class="lightbox" id="lb" onclick="this.classList.remove('open')">
+  <img id="lb-img" src="">
+</div>
+
+<script>
+function zoom(el) {
+  document.getElementById('lb-img').src = el.src;
+  document.getElementById('lb').classList.add('open');
+}
+</script>
+</body>
+</html>
