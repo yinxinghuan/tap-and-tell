@@ -60,7 +60,9 @@ export default function WallScreen({
 
   return (
     <div className="tt-wall-view">
-      <button className="tt-wall-view__close" onPointerDown={onClose} aria-label="close">×</button>
+      <button className="tt-wall-view__close" onPointerDown={onClose} aria-label="close">
+        <CloseIcon />
+      </button>
       <div
         className="tt-wall-view__feed"
         ref={containerRef}
@@ -75,10 +77,31 @@ export default function WallScreen({
           />
         ))}
       </div>
-      {entries.length > 1 && (
-        <div className="tt-wall-view__hint">{t('wall.swipe')}</div>
+      {entries.length > 1 && idx < entries.length - 1 && (
+        <div className="tt-wall-view__hint">
+          <SwipeIcon />
+          <span>{t('wall.swipe')}</span>
+        </div>
       )}
     </div>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+function SwipeIcon() {
+  // Two stacked chevrons hinting "scroll for next"
+  return (
+    <svg viewBox="0 0 16 22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7l5 5 5-5" opacity="0.5" />
+      <path d="M3 14l5 5 5-5" />
+    </svg>
   );
 }
 

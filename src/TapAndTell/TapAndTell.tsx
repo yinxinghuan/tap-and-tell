@@ -320,6 +320,7 @@ export default function TapAndTell() {
           onRemix={remixHero}
           onOpenWall={() => openWall(0)}
           wallCount={wall.entries.length}
+          wallAvatars={wall.entries.slice(0, 3).map(e => e.author_avatar).filter(Boolean)}
         />
       )}
 
@@ -450,6 +451,7 @@ export function HomeScreen({
   onRemix: (e: HeroEntry) => void;
   onOpenWall?: () => void;
   wallCount?: number;
+  wallAvatars?: string[];
 }) {
   const [heroIdx, setHeroIdx] = useState(0);
   useEffect(() => {
@@ -530,10 +532,24 @@ export function HomeScreen({
             ))}
           </div>
           {onOpenWall && (
-            <button className="tt-wall__see-all" onPointerDown={onOpenWall}>
-              {wallCount > 0
-                ? t('home.wall.seeAll', { n: wallCount })
-                : t('home.wall.beFirst')}
+            <button className="tt-wall-cta" onPointerDown={onOpenWall}>
+              {wallAvatars && wallAvatars.length > 0 && (
+                <span className="tt-wall-cta__stack">
+                  {wallAvatars.map((u, i) => (
+                    <img key={i} src={u} alt="" style={{ zIndex: wallAvatars.length - i }} />
+                  ))}
+                </span>
+              )}
+              <span className="tt-wall-cta__text">
+                {wallCount > 0
+                  ? t('home.wall.seeAll', { n: wallCount })
+                  : t('home.wall.beFirst')}
+              </span>
+              <span className="tt-wall-cta__arrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+              </span>
             </button>
           )}
         </div>
