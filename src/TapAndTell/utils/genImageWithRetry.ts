@@ -20,8 +20,8 @@ export async function genImageWithRetry(
   genImg: UseGenImage,
   opts: GenImageOptions,
   onProgress?: (info: RetryProgress) => void,
-  maxAttempts = 3,
-  backoffMs = 90_000,
+  maxAttempts = 4,
+  backoffMs = 150_000,
 ): Promise<string> {
   let lastError: Error | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {

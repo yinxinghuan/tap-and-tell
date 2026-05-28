@@ -114,8 +114,8 @@ export async function generateVideo(
   onProgress?: ((info: ProgressInfo) => void) | ((seconds: number) => void),
   pollIntervalMs = 5000,
   timeoutMs = 30 * 60 * 1000,
-  maxAttempts = 3,
-  backoffMs = 30 * 1000,
+  maxAttempts = 4,
+  backoffMs = 60 * 1000,
 ): Promise<string> {
   const notify = (info: ProgressInfo) => {
     if (!onProgress) return;
@@ -139,8 +139,14 @@ export async function generateVideo(
       return url;
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
-      // Only retry on the failed-task error class. HTTP / network errors throw immediately.
-      const isRetriable = /video failed/.test(lastError.message);
+      // Retry on:
+      //   - 'video failed' = OSS upload to Aliyun timed out (model bytes generated, upload step lost them)
+      //   - HTTP 429 = rate-limited at submit step (proxy or seetacloud cooldown)
+      //   - HTTP 5xx = transient server error
+      const isRetriable =
+        /video failed/.test(lastError.message) ||
+        /HTTP 429/.test(lastError.message) ||
+        /HTTP 5\d\d/.test(lastError.message);
       if (!isRetriable || attempt >= maxAttempts) break;
       // Backoff sleep, ticking progress so UI can show "retrying in Xs"
       for (let s = 0; s < backoffMs / 1000; s++) {
