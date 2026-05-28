@@ -443,6 +443,7 @@ export function HomeScreen({
   onRemix,
   onOpenWall,
   wallCount = 0,
+  wallAvatars = [],
 }: {
   avatar: Avatar;
   heroEntries: HeroEntry[];
