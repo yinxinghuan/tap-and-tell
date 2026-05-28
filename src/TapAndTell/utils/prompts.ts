@@ -52,6 +52,18 @@ export const ARCHETYPES: SceneArchetype[] = [
   },
 ];
 
+// Photoreal-prep prompt — used as the first img2img step to translate any
+// avatar (stylized AI art, anime, painted, etc) into a photoreal portrait
+// while preserving identity markers (hair color, clothing, face structure).
+// Without this step, stylized avatars cause style mismatch when scene-genning
+// a photoreal cinematic frame — see /ab/ A/B test page for evidence.
+export const PHOTOREAL_PREP_PROMPT =
+  'realistic photographic portrait of the same person from the reference, ' +
+  'photoreal, natural skin texture with subtle pores and imperfections, ' +
+  'soft studio lighting, head and shoulders shot, neutral background, ' +
+  'preserve hair color and clothing colors from the reference, ' +
+  'high detail, photoreal, 1:1';
+
 // System prompt for LLM that turns a tap location + short user text into
 // (a) three chip suggestions and (b) a video prompt for the transition.
 export const STORY_SYSTEM_PROMPT = `You are a wordless cinematographer helping a player chain a 1-2 beat visual story.

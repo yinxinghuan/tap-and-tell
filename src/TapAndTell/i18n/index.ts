@@ -21,6 +21,7 @@ const DICT: Record<Locale, Record<string, string>> = {
   en: {
     // Header phase tags
     'phase.home':      'home',
+    'phase.prep':      'translating',
     'phase.gen-a':     'composing',
     'phase.tap':       'your turn',
     'phase.gen-b':     'imagining',
@@ -42,6 +43,7 @@ const DICT: Record<Locale, Record<string, string>> = {
     'tap.input.placeholder':    'in your own words…',
 
     // Loader meta
+    'loader.meta.prep':         'translating you into the frame · ~3 min',
     'loader.meta.gen-a':        'composing the opening · ~3 min',
     'loader.meta.gen-b':        'imagining what happens next · ~3 min',
     'loader.meta.gen-video':    'weaving the motion · {seconds}s',
@@ -63,6 +65,7 @@ const DICT: Record<Locale, Record<string, string>> = {
   zh: {
     // Header phase tags
     'phase.home':      '首页',
+    'phase.prep':      '翻译形象',
     'phase.gen-a':     '正在画',
     'phase.tap':       '你的回合',
     'phase.gen-b':     '正在想象',
@@ -84,6 +87,7 @@ const DICT: Record<Locale, Record<string, string>> = {
     'tap.input.placeholder':    '用你自己的话说…',
 
     // Loader meta
+    'loader.meta.prep':         '正在把你画进画面 · 约 3 分钟',
     'loader.meta.gen-a':        '正在画开场 · 约 3 分钟',
     'loader.meta.gen-b':        '正在想象接下来 · 约 3 分钟',
     'loader.meta.gen-video':    '正在串成画面 · {seconds} 秒',

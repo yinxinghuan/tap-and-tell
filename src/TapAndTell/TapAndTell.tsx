@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGenImage, callAigramAPI, telegramId, isInAigram } from '@shared/runtime';
 import { generateVideo, type ProgressInfo } from './utils/videoApi';
 import { planBeat, pickTeaser, type BeatPlan } from './utils/aiHelpers';
-import { ARCHETYPES } from './utils/prompts';
+import { ARCHETYPES, PHOTOREAL_PREP_PROMPT } from './utils/prompts';
 import { loadHeroEntries, getSeed, type HeroEntry } from './utils/heroData';
+import { getPhotoreal, setPhotoreal } from './utils/photorealCache';
 import AlteruEmblem from './components/AlteruEmblem';
 import { t } from './i18n';
 import './TapAndTell.less';
 
-type Phase = 'home' | 'gen-a' | 'tap' | 'gen-b' | 'gen-video' | 'play' | 'error';
+type Phase = 'home' | 'prep' | 'gen-a' | 'tap' | 'gen-b' | 'gen-video' | 'play' | 'error';
 
 interface TapSpot { x: number; y: number; }
 interface Avatar { url: string; name: string; isDemo: boolean; }
@@ -66,7 +67,7 @@ export default function TapAndTell() {
   // Loading captions cycle
   const [teaser, setTeaser] = useState(pickTeaser());
   useEffect(() => {
-    if (phase === 'gen-a' || phase === 'gen-b' || phase === 'gen-video') {
+    if (phase === 'prep' || phase === 'gen-a' || phase === 'gen-b' || phase === 'gen-video') {
       const t = setInterval(() => setTeaser(pickTeaser()), 4500);
       return () => clearInterval(t);
     }
@@ -74,17 +75,38 @@ export default function TapAndTell() {
 
   // ─── Phase actions ────────────────────────────────────────────────────────
 
-  // "Make yours" — pick a random archetype, use avatar as ref so the figure in
-  // the scene gets the player's likeness. Demo avatar (geometric svg) wouldn't
-  // produce a meaningful person → skip ref and let txt2img draw a generic figure.
+  // "Make yours" — two-step pipeline:
+  //   1) Photoreal-prep: img2img the avatar with a "realistic portrait" prompt
+  //      to translate stylized AI avatars into photoreal intermediates. Cached
+  //      per avatar URL — first run ~200s, subsequent runs 0s.
+  //   2) Scene gen: img2img with the photoreal intermediate + scene prompt.
+  // Demo avatar (geometric svg) skips step 1 and falls back to plain txt2img.
   const makeYours = useCallback(async () => {
     const arch = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
     setFrameAPrompt(arch.prompt);
-    setPhase('gen-a');
+
     try {
+      // Step 1: ensure we have a photoreal intermediate (only for real avatars)
+      let refUrl: string | undefined;
+      if (!avatar.isDemo) {
+        const cached = getPhotoreal(avatar.url);
+        if (cached) {
+          refUrl = cached;
+        } else {
+          setPhase('prep');
+          refUrl = await genImg.generate({
+            prompt: PHOTOREAL_PREP_PROMPT,
+            ref_url: avatar.url,
+          });
+          setPhotoreal(avatar.url, refUrl);
+        }
+      }
+
+      // Step 2: scene gen
+      setPhase('gen-a');
       const url = await genImg.generate({
         prompt: arch.prompt,
-        ref_url: avatar.isDemo ? undefined : avatar.url,
+        ref_url: refUrl,
       });
       setFrameAUrl(url);
       setPhase('tap');
@@ -220,6 +242,14 @@ export default function TapAndTell() {
           onMakeYours={makeYours}
           onUpload={startWithUpload}
           onRemix={remixHero}
+        />
+      )}
+
+      {phase === 'prep' && (
+        <LoaderScreen
+          caption={teaser}
+          meta={t('loader.meta.prep')}
+          anchors={[avatar.url]}
         />
       )}
 
