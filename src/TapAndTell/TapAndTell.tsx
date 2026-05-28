@@ -21,8 +21,7 @@ interface TapSpot { x: number; y: number; }
 interface Avatar { url: string; name: string; isDemo: boolean; }
 
 /**
- * The shape stored in Aigram save when a user Publishes a story.
- * One row per user per game. Wall view reads list of these from 6 most-active users.
+ * A single published story.
  */
 export interface StorySave {
   a_url: string;
@@ -36,6 +35,18 @@ export interface StorySave {
   ts: number;
 }
 
+/**
+ * The shape stored in Aigram save per user. The platform gives each user
+ * exactly ONE save slot per game UUID, so we keep a rolling array of recent
+ * stories inside that slot. New publishes append, oldest get pruned.
+ * Wall view reads up to 6 users × MAX_STORIES_PER_USER and flattens.
+ */
+export interface StoryArchive {
+  stories: StorySave[];
+}
+
+const MAX_STORIES_PER_USER = 5;
+
 const DEMO_AVATAR: Avatar = {
   url: `${import.meta.env.BASE_URL}demo-avatar.svg`,
   name: 'guest',
@@ -44,7 +55,7 @@ const DEMO_AVATAR: Avatar = {
 
 export default function TapAndTell() {
   const genImg = useGenImage();
-  const save = useGameSave<StorySave>('tap-and-tell');
+  const save = useGameSave<StoryArchive>('tap-and-tell');
   const [phase, setPhase] = useState<Phase>('home');
   const [errMsg, setErrMsg] = useState('');
   const [publishState, setPublishState] = useState<'idle' | 'published'>('idle');
@@ -279,11 +290,13 @@ export default function TapAndTell() {
     setPhase('tap');
   }, []);
 
-  // Publish current story to Aigram save. Overwrites this user's previous
-  // save (platform stores 1 latest per user per game UUID). Wall view will
-  // pick up via the list endpoint that returns 6 most-active users' latest.
+  // Publish current story to Aigram save. APPENDS to the user's existing
+  // archive (kept inside the single save slot the platform allows per user
+  // per game). Oldest get pruned past MAX_STORIES_PER_USER. Wall view reads
+  // the list endpoint, flattens all users' archives.
   const handlePublish = useCallback(() => {
     if (!frameAUrl || !frameBUrl || !videoUrl || !tap) return;
+    if (!save.loaded) return; // don't clobber prior archive before it loads
     const story: StorySave = {
       a_url: frameAUrl,
       b_url: frameBUrl,
@@ -295,9 +308,12 @@ export default function TapAndTell() {
       author_name: avatar.name,
       ts: Date.now(),
     };
-    save.persist(story);
+    const prev = save.savedData?.stories ?? [];
+    const nextStories = [...prev, story].slice(-MAX_STORIES_PER_USER);
+    save.persist({ stories: nextStories });
     setPublishState('published');
-  }, [frameAUrl, frameBUrl, videoUrl, tap, clue, avatar, save]);
+    wall.refresh();
+  }, [frameAUrl, frameBUrl, videoUrl, tap, clue, avatar, save, wall]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 

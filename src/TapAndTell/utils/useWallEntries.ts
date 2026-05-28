@@ -16,7 +16,7 @@ import {
   getGameUuid,
   type AigramResponse,
 } from '@shared/runtime';
-import type { StorySave } from '../TapAndTell';
+import type { StorySave, StoryArchive } from '../TapAndTell';
 
 export interface WallEntry extends StorySave {
   user_id: string;
@@ -57,9 +57,18 @@ export function useWallEntries(): {
         for (const r of rows) {
           if (!r.resource_data) continue;
           try {
-            const story = JSON.parse(r.resource_data) as StorySave;
-            if (story.video_url && story.a_url) {
-              parsed.push({ ...story, user_id: r.user_id });
+            const blob = JSON.parse(r.resource_data) as Partial<StoryArchive> & Partial<StorySave>;
+            // New format: { stories: StorySave[] }. Old format (v0.8.0): a bare
+            // StorySave. Tolerate both for back-compat.
+            const stories: StorySave[] = Array.isArray(blob.stories)
+              ? blob.stories
+              : blob.video_url && blob.a_url
+                ? [blob as StorySave]
+                : [];
+            for (const s of stories) {
+              if (s.video_url && s.a_url) {
+                parsed.push({ ...s, user_id: r.user_id });
+              }
             }
           } catch {
             // skip corrupted save
