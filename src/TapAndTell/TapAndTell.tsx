@@ -8,6 +8,7 @@ import { planBeat, pickTeaser, type BeatPlan } from './utils/aiHelpers';
 import { ARCHETYPES, PHOTOREAL_PREP_PROMPT } from './utils/prompts';
 import { loadHeroEntries, getSeed, type HeroEntry } from './utils/heroData';
 import { getPhotoreal, setPhotoreal } from './utils/photorealCache';
+import { genImageWithRetry, type RetryProgress as GenImgRetry } from './utils/genImageWithRetry';
 import AlteruEmblem from './components/AlteruEmblem';
 import WallScreen from './screens/WallScreen';
 import { useWallEntries, type WallEntry } from './utils/useWallEntries';
@@ -48,6 +49,7 @@ export default function TapAndTell() {
   const [errMsg, setErrMsg] = useState('');
   const [publishState, setPublishState] = useState<'idle' | 'published'>('idle');
   const [wallStartIdx, setWallStartIdx] = useState(0);
+  const [imgRetry, setImgRetry] = useState<GenImgRetry | null>(null);
   const wall = useWallEntries();
 
   // Identity ─────────────────────────────────────────────────────────────────
@@ -118,21 +120,25 @@ export default function TapAndTell() {
           refUrl = cached;
         } else {
           setPhase('prep');
-          refUrl = await genImg.generate({
-            prompt: PHOTOREAL_PREP_PROMPT,
-            ref_url: avatar.url,
-          });
+          refUrl = await genImageWithRetry(
+            genImg,
+            { prompt: PHOTOREAL_PREP_PROMPT, ref_url: avatar.url },
+            info => setImgRetry(info),
+          );
           setPhotoreal(avatar.url, refUrl);
         }
       }
 
       // Step 2: scene gen
       setPhase('gen-a');
-      const url = await genImg.generate({
-        prompt: arch.prompt,
-        ref_url: refUrl,
-      });
+      setImgRetry(null);
+      const url = await genImageWithRetry(
+        genImg,
+        { prompt: arch.prompt, ref_url: refUrl },
+        info => setImgRetry(info),
+      );
       setFrameAUrl(url);
+      setImgRetry(null);
       setPhase('tap');
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
@@ -210,11 +216,13 @@ export default function TapAndTell() {
       const finalPlan = await planBeat(frameAPrompt, tap, finalClue);
       setBeatPlan(finalPlan);
 
-      const bUrl = await genImg.generate({
-        prompt: finalPlan.next_image_prompt,
-        ref_url: frameAUrl,
-      });
+      const bUrl = await genImageWithRetry(
+        genImg,
+        { prompt: finalPlan.next_image_prompt, ref_url: frameAUrl },
+        info => setImgRetry(info),
+      );
       setFrameBUrl(bUrl);
+      setImgRetry(null);
 
       setPhase('gen-video');
       setVideoProgress({ seconds: 0, attempt: 1, maxAttempts: 3, retrying: false });
@@ -317,14 +325,25 @@ export default function TapAndTell() {
 
       {phase === 'prep' && (
         <LoaderScreen
-          caption={teaser}
-          meta={t('loader.meta.prep')}
+          caption={imgRetry?.retrying ? t('loader.busy.caption') : teaser}
+          meta={
+            imgRetry?.retrying
+              ? t('loader.meta.imgRetry', { seconds: imgRetry.secondsLeft ?? 0, attempt: imgRetry.attempt, max: imgRetry.maxAttempts })
+              : t('loader.meta.prep')
+          }
           anchors={[avatar.url]}
         />
       )}
 
       {phase === 'gen-a' && (
-        <LoaderScreen caption={teaser} meta={t('loader.meta.gen-a')} />
+        <LoaderScreen
+          caption={imgRetry?.retrying ? t('loader.busy.caption') : teaser}
+          meta={
+            imgRetry?.retrying
+              ? t('loader.meta.imgRetry', { seconds: imgRetry.secondsLeft ?? 0, attempt: imgRetry.attempt, max: imgRetry.maxAttempts })
+              : t('loader.meta.gen-a')
+          }
+        />
       )}
 
       {phase === 'tap' && (
@@ -340,8 +359,12 @@ export default function TapAndTell() {
 
       {phase === 'gen-b' && (
         <LoaderScreen
-          caption={teaser}
-          meta={t('loader.meta.gen-b')}
+          caption={imgRetry?.retrying ? t('loader.busy.caption') : teaser}
+          meta={
+            imgRetry?.retrying
+              ? t('loader.meta.imgRetry', { seconds: imgRetry.secondsLeft ?? 0, attempt: imgRetry.attempt, max: imgRetry.maxAttempts })
+              : t('loader.meta.gen-b')
+          }
           anchors={[frameAUrl]}
         />
       )}
