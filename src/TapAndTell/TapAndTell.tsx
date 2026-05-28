@@ -378,7 +378,6 @@ export function HomeScreen({
                 onPointerDown={() => onRemix(e)}
               >
                 <video src={e.video_url} loop muted playsInline autoPlay />
-                <div className="tt-wall__cell__cap">{e.caption}</div>
               </div>
             ))}
           </div>
