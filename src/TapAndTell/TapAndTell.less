@@ -291,6 +291,21 @@
   gap: 6px;
 }
 
+.tt-wall__see-all {
+  align-self: center;
+  margin-top: 6px;
+  background: transparent;
+  border: none;
+  font-family: @display;
+  font-style: italic;
+  font-size: 14px;
+  color: @brand-pink;
+  cursor: pointer;
+  padding: 6px 14px;
+  letter-spacing: 0.01em;
+  &:active { transform: scale(0.97); }
+}
+
 .tt-wall__cell {
   position: relative;
   aspect-ratio: 1 / 1;
@@ -697,6 +712,206 @@
     cursor: default;
     pointer-events: none;
   }
+}
+
+// ─── Wall view (TikTok-style swipeable full-screen) ─────────────────────────
+.tt-wall-view {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+
+  &--empty {
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 40px;
+  }
+
+  &__close {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: @text-1;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 50;
+    -webkit-tap-highlight-color: transparent;
+    &:active { transform: scale(0.94); }
+  }
+
+  &__msg {
+    font-family: @display;
+    font-style: italic;
+    font-size: 22px;
+    color: @text-2;
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.4;
+  }
+
+  &__feed {
+    flex: 1;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  &__hint {
+    position: absolute;
+    bottom: 14px;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: @sans;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    pointer-events: none;
+    z-index: 30;
+    animation: tt-fade-cycle 3s ease-in-out infinite;
+  }
+}
+
+.tt-wall-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &__still, &__video {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  &__video { pointer-events: auto; }
+
+  &__gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg,
+      rgba(0,0,0,0.55) 0%,
+      rgba(0,0,0,0.0) 22%,
+      rgba(0,0,0,0.0) 70%,
+      rgba(0,0,0,0.75) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  // The original-author tap marker, pulsing pink
+  &__marker {
+    position: absolute;
+    width: 72px; height: 72px;
+    margin: -36px 0 0 -36px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 5;
+    -webkit-tap-highlight-color: transparent;
+
+    &::before, &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid @brand-pink;
+      animation: tt-wall-marker-pulse 1.8s ease-out infinite;
+    }
+    &::after { animation-delay: 0.6s; }
+
+    i {
+      position: absolute;
+      inset: 30px;
+      background: @brand-pink;
+      border-radius: 50%;
+      box-shadow: 0 0 20px @brand-pink, 0 0 4px rgba(255,255,255,0.6);
+    }
+
+    &:active { transform: scale(0.92); }
+  }
+
+  &__author {
+    position: absolute;
+    top: 16px; right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 5px 12px 5px 5px;
+    border-radius: 999px;
+    z-index: 10;
+    img {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+    span {
+      font-family: @sans;
+      font-size: 12px;
+      color: @text-1;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__clue {
+    position: absolute;
+    bottom: 70px;
+    left: 18px; right: 18px;
+    text-align: center;
+    font-family: @display;
+    font-style: italic;
+    font-size: 22px;
+    color: @text-1;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+    line-height: 1.25;
+    pointer-events: none;
+    z-index: 8;
+  }
+
+  &__cta {
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    animation: tt-wall-cta-in 0.4s ease-out;
+  }
+}
+
+@keyframes tt-wall-marker-pulse {
+  0%   { transform: scale(0.45); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes tt-wall-cta-in {
+  from { transform: translate(-50%, 12px); opacity: 0; }
+  to   { transform: translate(-50%, 0); opacity: 1; }
 }
 
 // ─── Error (curl motif behind, big Cormorant title) ─────────────────────────

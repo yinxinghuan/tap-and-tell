@@ -36,6 +36,8 @@ const DICT: Record<Locale, Record<string, string>> = {
     'home.cta.avatarPill.playing': 'playing as',
     'home.cta.upload':          'or upload a photo',
     'home.wall.label':          'recent stories',
+    'home.wall.seeAll':         'see {n} from the community →',
+    'home.wall.beFirst':        'be the first to publish →',
 
     // Tap
     'tap.hint':                 'tap somewhere…',
@@ -57,6 +59,14 @@ const DICT: Record<Locale, Record<string, string>> = {
 
     // Error
     'error.cta.startOver':      'start over',
+
+    // Wall
+    'wall.loading':             'loading the wall…',
+    'wall.empty':               'no stories on the wall yet.',
+    'wall.empty.cta':           'tell the first one →',
+    'wall.swipe':               '↕ swipe',
+    'wall.continue':            'tell what happens after this →',
+    'wall.tap-to-play':         'tap to play',
 
     // Archetype labels (rarely seen — when picker shown)
     'archetype.cabin':       'A cabin in the snow',
@@ -82,6 +92,8 @@ const DICT: Record<Locale, Record<string, string>> = {
     'home.cta.avatarPill.playing': '正在玩的是',
     'home.cta.upload':          '或上传一张照片',
     'home.wall.label':          '最近的故事',
+    'home.wall.seeAll':         '查看社区 {n} 个 →',
+    'home.wall.beFirst':        '成为第一个发布的人 →',
 
     // Tap
     'tap.hint':                 '点画面任意一处…',
@@ -103,6 +115,14 @@ const DICT: Record<Locale, Record<string, string>> = {
 
     // Error
     'error.cta.startOver':      '重新开始',
+
+    // Wall
+    'wall.loading':             '加载墙上的故事…',
+    'wall.empty':               '墙上还没有故事。',
+    'wall.empty.cta':           '讲第一个 →',
+    'wall.swipe':               '↕ 上下滑',
+    'wall.continue':            '接下来呢？ →',
+    'wall.tap-to-play':         '点击播放',
 
     // Archetype labels
     'archetype.cabin':       '雪林中的小木屋',

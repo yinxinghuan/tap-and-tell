@@ -9,10 +9,12 @@ import { ARCHETYPES, PHOTOREAL_PREP_PROMPT } from './utils/prompts';
 import { loadHeroEntries, getSeed, type HeroEntry } from './utils/heroData';
 import { getPhotoreal, setPhotoreal } from './utils/photorealCache';
 import AlteruEmblem from './components/AlteruEmblem';
+import WallScreen from './screens/WallScreen';
+import { useWallEntries, type WallEntry } from './utils/useWallEntries';
 import { t } from './i18n';
 import './TapAndTell.less';
 
-type Phase = 'home' | 'prep' | 'gen-a' | 'tap' | 'gen-b' | 'gen-video' | 'play' | 'error';
+type Phase = 'home' | 'prep' | 'gen-a' | 'tap' | 'gen-b' | 'gen-video' | 'play' | 'error' | 'wall';
 
 interface TapSpot { x: number; y: number; }
 interface Avatar { url: string; name: string; isDemo: boolean; }
@@ -45,6 +47,8 @@ export default function TapAndTell() {
   const [phase, setPhase] = useState<Phase>('home');
   const [errMsg, setErrMsg] = useState('');
   const [publishState, setPublishState] = useState<'idle' | 'published'>('idle');
+  const [wallStartIdx, setWallStartIdx] = useState(0);
+  const wall = useWallEntries();
 
   // Identity ─────────────────────────────────────────────────────────────────
   const [avatar, setAvatar] = useState<Avatar>(DEMO_AVATAR);
@@ -246,6 +250,27 @@ export default function TapAndTell() {
     setPublishState('idle');
   }, []);
 
+  // Open the swipeable wall view. Refresh data each time we enter.
+  const openWall = useCallback((startIndex = 0) => {
+    setWallStartIdx(startIndex);
+    wall.refresh();
+    setPhase('wall');
+  }, [wall]);
+
+  // "Continue from here" — start a new beat using the parent story's end frame
+  // as our Frame A. (v0.8.2 may add parent_id linkage for a real story tree.)
+  const continueFromEntry = useCallback((entry: WallEntry) => {
+    setFrameAUrl(entry.b_url);
+    setFrameAPrompt(`continuing from ${entry.author_name || 'someone'}'s story`);
+    setTap(null);
+    setClue('');
+    setBeatPlan(null);
+    setFrameBUrl('');
+    setVideoUrl('');
+    setPublishState('idle');
+    setPhase('tap');
+  }, []);
+
   // Publish current story to Aigram save. Overwrites this user's previous
   // save (platform stores 1 latest per user per game UUID). Wall view will
   // pick up via the list endpoint that returns 6 most-active users' latest.
@@ -285,6 +310,8 @@ export default function TapAndTell() {
           onMakeYours={makeYours}
           onUpload={startWithUpload}
           onRemix={remixHero}
+          onOpenWall={() => openWall(0)}
+          wallCount={wall.entries.length}
         />
       )}
 
@@ -347,6 +374,16 @@ export default function TapAndTell() {
         />
       )}
 
+      {phase === 'wall' && (
+        <WallScreen
+          entries={wall.entries}
+          loaded={wall.loaded}
+          startIndex={wallStartIdx}
+          onClose={() => setPhase('home')}
+          onContinueFrom={continueFromEntry}
+        />
+      )}
+
       {phase === 'error' && (
         <div className="tt-error">
           <div className="tt-error__motif">
@@ -380,12 +417,16 @@ export function HomeScreen({
   onMakeYours,
   onUpload,
   onRemix,
+  onOpenWall,
+  wallCount = 0,
 }: {
   avatar: Avatar;
   heroEntries: HeroEntry[];
   onMakeYours: () => void;
   onUpload: (f: File) => void;
   onRemix: (e: HeroEntry) => void;
+  onOpenWall?: () => void;
+  wallCount?: number;
 }) {
   const [heroIdx, setHeroIdx] = useState(0);
   useEffect(() => {
@@ -465,6 +506,13 @@ export function HomeScreen({
               </div>
             ))}
           </div>
+          {onOpenWall && (
+            <button className="tt-wall__see-all" onPointerDown={onOpenWall}>
+              {wallCount > 0
+                ? t('home.wall.seeAll', { n: wallCount })
+                : t('home.wall.beFirst')}
+            </button>
+          )}
         </div>
       )}
     </div>
