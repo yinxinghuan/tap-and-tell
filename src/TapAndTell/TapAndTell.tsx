@@ -37,15 +37,14 @@ export interface StorySave {
 
 /**
  * The shape stored in Aigram save per user. The platform gives each user
- * exactly ONE save slot per game UUID, so we keep a rolling array of recent
- * stories inside that slot. New publishes append, oldest get pruned.
- * Wall view reads up to 6 users × MAX_STORIES_PER_USER and flattens.
+ * exactly ONE save slot per game UUID, so we keep an append-only array of
+ * stories inside that slot. New publishes append; nothing gets pruned —
+ * users keep their full history on the wall. If publish rate needs throttling
+ * later, gate it at the publish step (daily quota) not at display time.
  */
 export interface StoryArchive {
   stories: StorySave[];
 }
-
-const MAX_STORIES_PER_USER = 5;
 
 const DEMO_AVATAR: Avatar = {
   url: `${import.meta.env.BASE_URL}demo-avatar.svg`,
@@ -309,7 +308,7 @@ export default function TapAndTell() {
       ts: Date.now(),
     };
     const prev = save.savedData?.stories ?? [];
-    const nextStories = [...prev, story].slice(-MAX_STORIES_PER_USER);
+    const nextStories = [...prev, story];
     save.persist({ stories: nextStories });
     setPublishState('published');
     wall.refresh();
