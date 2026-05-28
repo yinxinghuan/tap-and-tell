@@ -74,13 +74,18 @@ export default function TapAndTell() {
 
   // ─── Phase actions ────────────────────────────────────────────────────────
 
-  // "Make yours" — pick a random archetype, use avatar as ref
+  // "Make yours" — pick a random archetype, use avatar as ref so the figure in
+  // the scene gets the player's likeness. Demo avatar (geometric svg) wouldn't
+  // produce a meaningful person → skip ref and let txt2img draw a generic figure.
   const makeYours = useCallback(async () => {
     const arch = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
     setFrameAPrompt(arch.prompt);
     setPhase('gen-a');
     try {
-      const url = await genImg.generate({ prompt: arch.prompt });
+      const url = await genImg.generate({
+        prompt: arch.prompt,
+        ref_url: avatar.isDemo ? undefined : avatar.url,
+      });
       setFrameAUrl(url);
       setPhase('tap');
     } catch (e) {
@@ -88,7 +93,7 @@ export default function TapAndTell() {
       setErrMsg(`Couldn't compose the opening scene — ${m}`);
       setPhase('error');
     }
-  }, [genImg]);
+  }, [genImg, avatar]);
 
   // "Remix" — start from a hero entry's Frame A
   const remixHero = useCallback((entry: HeroEntry) => {

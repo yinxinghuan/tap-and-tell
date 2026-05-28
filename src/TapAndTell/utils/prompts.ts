@@ -8,14 +8,19 @@ export interface SceneArchetype {
   prompt: string;
 }
 
+// NOTE: prompts say "the figure" (subject-agnostic) — never gender / age / look.
+// When img2img runs with the user's avatar as ref, the avatar's likeness fills
+// that slot; without a ref, txt2img generates a generic figure.
+// See feedback_img2img_subject_agnostic_prompt.md.
 export const ARCHETYPES: SceneArchetype[] = [
   {
     id: 'cabin',
     label: 'A cabin in the snow',
     hook: 'A small wooden cabin alone in a snowy pine forest.',
     prompt:
-      'cinematic still of a small wooden cabin alone in a snowy pine forest, ' +
-      'soft warm light glowing from one window, dusk, ' +
+      'cinematic still of the figure standing outside a small wooden cabin alone ' +
+      'in a snowy pine forest at dusk, warm light glowing from one window, ' +
+      'soft snowfall, the figure half-silhouette against the window glow, ' +
       'muted color grade, atmospheric, photoreal, 1:1',
   },
   {
@@ -23,27 +28,27 @@ export const ARCHETYPES: SceneArchetype[] = [
     label: 'A figure on an empty beach',
     hook: 'A lone figure standing on a wide grey beach at low tide.',
     prompt:
-      'cinematic still, lone figure in long coat standing on a wide grey beach ' +
-      'at low tide, overcast sky, soft diffuse light, distant lighthouse, ' +
-      'desaturated palette, photoreal, 1:1',
+      'cinematic still of the figure standing alone on a wide grey beach at low tide, ' +
+      'overcast sky, soft diffuse light, distant lighthouse on the horizon, ' +
+      'long coat fluttering, desaturated palette, photoreal, 1:1',
   },
   {
     id: 'street',
     label: 'An empty city street at night',
     hook: 'A rain-slick city street with one neon sign flickering.',
     prompt:
-      'cinematic still of an empty narrow city street at night, ' +
-      'wet asphalt reflecting one flickering pink neon sign, ' +
-      'fog drifting through, cinematic noir lighting, photoreal, 1:1',
+      'cinematic still of the figure walking down an empty narrow city street at night, ' +
+      'wet asphalt reflecting one flickering pink neon sign, fog drifting through, ' +
+      'cinematic noir lighting, photoreal, 1:1',
   },
   {
     id: 'desert',
     label: 'A road through the desert',
     hook: 'A straight desert road vanishing into a heat-shimmered horizon.',
     prompt:
-      'cinematic still of a straight desert road vanishing into a ' +
-      'heat-shimmered horizon, dusty mesas in the distance, ' +
-      'golden hour, warm tones, photoreal, 1:1',
+      'cinematic still of the figure standing on a straight desert road ' +
+      'vanishing into a heat-shimmered horizon, dusty mesas in the distance, ' +
+      'golden hour, warm tones, long shadow stretching across the asphalt, photoreal, 1:1',
   },
 ];
 
