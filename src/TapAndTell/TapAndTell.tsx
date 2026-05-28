@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGenImage, callAigramAPI, telegramId, isInAigram } from '@shared/runtime';
+import { useGameSave } from '@shared/save';
 import { generateVideo, type ProgressInfo } from './utils/videoApi';
 import { planBeat, pickTeaser, type BeatPlan } from './utils/aiHelpers';
 import { ARCHETYPES, PHOTOREAL_PREP_PROMPT } from './utils/prompts';
@@ -16,6 +17,22 @@ type Phase = 'home' | 'prep' | 'gen-a' | 'tap' | 'gen-b' | 'gen-video' | 'play' 
 interface TapSpot { x: number; y: number; }
 interface Avatar { url: string; name: string; isDemo: boolean; }
 
+/**
+ * The shape stored in Aigram save when a user Publishes a story.
+ * One row per user per game. Wall view reads list of these from 6 most-active users.
+ */
+export interface StorySave {
+  a_url: string;
+  b_url: string;
+  video_url: string;
+  tap_x: number;
+  tap_y: number;
+  clue: string;
+  author_avatar: string;
+  author_name: string;
+  ts: number;
+}
+
 const DEMO_AVATAR: Avatar = {
   url: `${import.meta.env.BASE_URL}demo-avatar.svg`,
   name: 'guest',
@@ -24,8 +41,10 @@ const DEMO_AVATAR: Avatar = {
 
 export default function TapAndTell() {
   const genImg = useGenImage();
+  const save = useGameSave<StorySave>('tap-and-tell');
   const [phase, setPhase] = useState<Phase>('home');
   const [errMsg, setErrMsg] = useState('');
+  const [publishState, setPublishState] = useState<'idle' | 'published'>('idle');
 
   // Identity ─────────────────────────────────────────────────────────────────
   const [avatar, setAvatar] = useState<Avatar>(DEMO_AVATAR);
@@ -57,6 +76,7 @@ export default function TapAndTell() {
   const [frameAPrompt, setFrameAPrompt] = useState('');
   const [frameAUrl, setFrameAUrl] = useState('');
   const [tap, setTap] = useState<TapSpot | null>(null);
+  const [clue, setClue] = useState('');
   const [beatPlan, setBeatPlan] = useState<BeatPlan | null>(null);
   const [frameBUrl, setFrameBUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -180,6 +200,7 @@ export default function TapAndTell() {
   const handleGo = useCallback(async (cluefromArg?: string) => {
     const finalClue = (cluefromArg ?? '').trim();
     if (!tap && !finalClue) return;
+    setClue(finalClue);
     setPhase('gen-b');
     try {
       const finalPlan = await planBeat(frameAPrompt, tap, finalClue);
@@ -216,12 +237,34 @@ export default function TapAndTell() {
     setFrameAPrompt('');
     setFrameAUrl('');
     setTap(null);
+    setClue('');
     setBeatPlan(null);
     setFrameBUrl('');
     setVideoUrl('');
     setVideoProgress({ seconds: 0, attempt: 1, maxAttempts: 3, retrying: false });
     setErrMsg('');
+    setPublishState('idle');
   }, []);
+
+  // Publish current story to Aigram save. Overwrites this user's previous
+  // save (platform stores 1 latest per user per game UUID). Wall view will
+  // pick up via the list endpoint that returns 6 most-active users' latest.
+  const handlePublish = useCallback(() => {
+    if (!frameAUrl || !frameBUrl || !videoUrl || !tap) return;
+    const story: StorySave = {
+      a_url: frameAUrl,
+      b_url: frameBUrl,
+      video_url: videoUrl,
+      tap_x: tap.x,
+      tap_y: tap.y,
+      clue,
+      author_avatar: avatar.url,
+      author_name: avatar.name,
+      ts: Date.now(),
+    };
+    save.persist(story);
+    setPublishState('published');
+  }, [frameAUrl, frameBUrl, videoUrl, tap, clue, avatar, save]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -295,7 +338,13 @@ export default function TapAndTell() {
       )}
 
       {phase === 'play' && (
-        <PlayScreen videoUrl={videoUrl} onAgain={reset} />
+        <PlayScreen
+          videoUrl={videoUrl}
+          onAgain={reset}
+          onPublish={handlePublish}
+          published={publishState === 'published'}
+          canPublish={isInAigram}
+        />
       )}
 
       {phase === 'error' && (
@@ -531,7 +580,19 @@ export function TapScreen({
   );
 }
 
-export function PlayScreen({ videoUrl, onAgain }: { videoUrl: string; onAgain: () => void }) {
+export function PlayScreen({
+  videoUrl,
+  onAgain,
+  onPublish,
+  published = false,
+  canPublish = true,
+}: {
+  videoUrl: string;
+  onAgain: () => void;
+  onPublish?: () => void;
+  published?: boolean;
+  canPublish?: boolean;
+}) {
   return (
     <div className="tt-play">
       <div className="tt-play__caption">your story.</div>
@@ -539,6 +600,15 @@ export function PlayScreen({ videoUrl, onAgain }: { videoUrl: string; onAgain: (
         <video src={videoUrl} controls autoPlay loop playsInline />
       </div>
       <div className="tt-play__cta">
+        {canPublish && onPublish && (
+          <button
+            className={`tt-btn ${published ? 'tt-btn--published' : 'tt-btn--pink'}`}
+            onPointerDown={published ? undefined : onPublish}
+            disabled={published}
+          >
+            {published ? t('play.cta.published') : t('play.cta.publish')}
+          </button>
+        )}
         <a className="tt-btn" href={videoUrl} target="_blank" rel="noopener noreferrer" download>
           {t('play.cta.download')}
         </a>

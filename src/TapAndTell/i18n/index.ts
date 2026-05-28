@@ -52,6 +52,8 @@ const DICT: Record<Locale, Record<string, string>> = {
 
     // Play
     'play.cta.download':        'download',
+    'play.cta.publish':         'publish to wall',
+    'play.cta.published':       'on the wall ✓',
 
     // Error
     'error.cta.startOver':      'start over',
@@ -96,6 +98,8 @@ const DICT: Record<Locale, Record<string, string>> = {
 
     // Play
     'play.cta.download':        '下载',
+    'play.cta.publish':         '发布到墙',
+    'play.cta.published':       '已上墙 ✓',
 
     // Error
     'error.cta.startOver':      '重新开始',
