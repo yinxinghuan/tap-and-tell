@@ -470,10 +470,12 @@ export function HomeScreen({
         {hero && (
           <video
             src={hero.video_url}
+            poster={hero.a_url}
             autoPlay
             loop
             muted
             playsInline
+            preload="metadata"
             key={hero.id}
           />
         )}
@@ -528,7 +530,12 @@ export function HomeScreen({
                 className="tt-wall__cell"
                 onPointerDown={() => onRemix(e)}
               >
-                <video src={e.video_url} loop muted playsInline autoPlay />
+                <video
+                  src={e.video_url}
+                  poster={e.a_url}
+                  loop muted playsInline autoPlay
+                  preload="metadata"
+                />
               </div>
             ))}
           </div>
